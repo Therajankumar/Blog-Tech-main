@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+   <%- include('./partials/head') %>
+   <title>SignUp Page</title>
+   <style>
+      body {
+         background: linear-gradient(135deg, #667eea, #764ba2);
+         min-height: 100vh;
+         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+         margin: 0;
+      }
+      .signup-section {
+         display: flex;
+         justify-content: center;
+         align-items: center;
+         padding: 60px 15px;
+      }
+      .signup-card {
+         background: #fff;
+         border-radius: 20px;
+         box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+         padding: 2rem;
+         width: 100%;
+         max-width: 420px;
+         animation: fadeIn 0.6s ease-in-out;
+      }
+      .signup-card h2 {
+         font-weight: 600;
+         margin-bottom: 1.5rem;
+         text-align: center;
+         color: #333;
+      }
+      .btn-primary, .btn-success {
+         width: 100%;
+         border-radius: 12px;
+         padding: 0.75rem;
+         font-weight: 500;
+         transition: 0.3s;
+      }
+      .btn-primary:hover, .btn-success:hover {
+         transform: translateY(-2px);
+         box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+      }
+      @keyframes fadeIn {
+         from {opacity: 0; transform: translateY(20px);}
+         to {opacity: 1; transform: translateY(0);}
+      }
+      /* OTP Section */
+      .otp-section { margin-top: 1.5rem; display: none; }
+      .otp-input { display: flex; justify-content: space-between; }
+      .otp-input input {
+         width: 40px;
+         height: 50px;
+         text-align: center;
+         font-size: 1.5rem;
+         border: 1px solid #ccc;
+         border-radius: 8px;
+      }
+   </style>
+</head>
+<body>
+   <%- include('./partials/navbar') %>
+
+   <div class="signup-section">
+      <div class="signup-card">
+         <h2>Create Account</h2>
+         <form id="signupForm">
+            <div class="mb-3">
+               <label for="fullName" class="form-label">Full Name</label>
+               <input type="text" class="form-control" id="fullName" name="fullName" required>
+            </div>
+            <div class="mb-3">
+               <label for="exampleInputEmail1" class="form-label">Email Address</label>
+               <input type="email" class="form-control" id="exampleInputEmail1" name="email" required>
+               <div id="emailHelp" class="form-text">We'll never share your email.</div>
+            </div>
+            <div class="mb-3">
+               <label for="exampleInputPassword1" class="form-label">Password</label>
+               <input type="password" class="form-control" id="exampleInputPassword1" name="password" required>
+            </div>
+            <div class="mb-3 form-check">
+               <input type="checkbox" class="form-check-input" id="exampleCheck1">
+               <label class="form-check-label" for="exampleCheck1">Remember me</label>
+            </div>
+            <button type="submit" class="btn btn-primary">Sign Up</button>
+         </form>
+
+         <div class="otp-section" id="otpSection">
+            <h5>Enter the OTP sent to your email</h5>
+            <form id="otpForm">
+               <input type="hidden" name="email" id="otpEmail">
+               <div class="otp-input mb-3">
+                  <input type="text" maxlength="1" name="otp[]" required>
+                  <input type="text" maxlength="1" name="otp[]" required>
+                  <input type="text" maxlength="1" name="otp[]" required>
+                  <input type="text" maxlength="1" name="otp[]" required>
+                  <input type="text" maxlength="1" name="otp[]" required>
+                  <input type="text" maxlength="1" name="otp[]" required>
+               </div>
+               <button type="submit" class="btn btn-success w-100">Verify OTP</button>
+            </form>
+            <p class="text-center mt-2"><a href="#" onclick="resendOtp()">Resend OTP</a></p>
+         </div>
+      </div>
+   </div>
+
+<script>
+const signupForm = document.getElementById("signupForm");
+const otpForm = document.getElementById("otpForm");
+const otpSection = document.getElementById("otpSection");
+const otpEmail = document.getElementById("otpEmail");
+
+// Handle signup form
+signupForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const data = {
+        fullName: document.getElementById("fullName").value,
+        email: document.getElementById("exampleInputEmail1").value,
+        password: document.getElementById("exampleInputPassword1").value
+    };
+
+    const response = await fetch("/user/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data)
+    });
+    const result = await response.json();
+
+    if (response.ok) {
+        otpEmail.value = data.email;
+        otpSection.style.display = "block";
+        signupForm.style.display = "none";
+        alert(result.message);
+    } else {
+        alert(result.message);
+    }
+});
+
+// Handle OTP verification
+otpForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const otpInputs = document.querySelectorAll("input[name='otp[]']");
+    const otp = Array.from(otpInputs).map(input => input.value).join("");
+    const email = otpEmail.value;
+
+    const response = await fetch("/user/verify-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, otp })
+    });
+
+    const result = await response.json();
+
+    if (response.ok) {
+    document.cookie = `token=${result.token}; path=/;`;
+    alert(result.message);
+    window.location.replace("/"); // go to home page}
+
+    } else {
+        alert(result.message);
+    }
+});
+
+// Resend OTP
+async function resendOtp() {
+    const email = otpEmail.value;
+
+    try {
+        const response = await fetch("/user/resend-otp", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email })
+        });
+        const result = await response.json();
+        alert(result.message);
+    } catch (err) {
+        console.error(err);
+        alert("Failed to resend OTP");
+    }
+}
+</script>
+
+<%- include('./partials/script') %>
+</body>
+</html>
